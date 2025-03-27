@@ -1,0 +1,69 @@
+@echo off
+:: Define Registry Path and Application Name
+set "RegPath=HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CompatAppFlags\Layers"
+set "AppName=ExampleApp.exe"  REM Hardcoded application name
+set "DefaultFontSize=~ DefaultDPI"
+set "LargeFontSize=~ HighDPI"
+
+:: Function to check if the registry value exists and matches the desired value
+:CheckRegistry
+reg query "%RegPath%" /v "%AppName%" 2>nul | findstr /i "%DefaultFontSize%" >nul
+if %errorlevel% equ 0 (
+    set "CurrentFontSize=Default font size"
+    goto ShowMenu
+)
+
+reg query "%RegPath%" /v "%AppName%" 2>nul | findstr /i "%LargeFontSize%" >nul
+if %errorlevel% equ 0 (
+    set "CurrentFontSize=Large font size"
+    goto ShowMenu
+)
+
+:: If no value is set, notify the user
+set "CurrentFontSize=Not set"
+
+:ShowMenu
+echo Current font size: %CurrentFontSize%
+echo.
+echo Select font size for %AppName%:
+echo [1] Default font size
+echo [2] Large font size
+echo [3] Exit
+set /p "choice=Enter your choice (1, 2, or 3): "
+
+:: Handle user's choice
+if "%choice%"=="1" (
+    set "RegValue=%DefaultFontSize%"
+    set "FontSizeChoice=Default font size"
+) else if "%choice%"=="2" (
+    set "RegValue=%LargeFontSize%"
+    set "FontSizeChoice=Large font size"
+) else if "%choice%"=="3" (
+    echo [INFO] Exiting the script.
+    exit /b
+) else (
+    echo [ERROR] Invalid choice. Please enter 1, 2, or 3.
+    pause
+    goto ShowMenu
+)
+
+:: Check if the selected value is already configured in the registry
+reg query "%RegPath%" /v "%AppName%" 2>nul | findstr /i "%RegValue%" >nul
+if %errorlevel% equ 0 (
+    echo [INFO] "%FontSizeChoice%" is already configured for %AppName%.
+    pause
+    goto ShowMenu
+)
+
+:: Add the registry value if not already configured
+reg add "%RegPath%" /v "%AppName%" /t REG_SZ /d "%RegValue%" /f >nul 2>&1
+
+:: Check if the command succeeded
+if %errorlevel% equ 0 (
+    echo [SUCCESS] %FontSizeChoice% has been successfully configured.
+) else (
+    echo [ERROR] Failed to add the registry entry. Check permissions.
+)
+
+pause
+exit /b
